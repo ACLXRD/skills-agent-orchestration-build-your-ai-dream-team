@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f3f6fb">
+    <title>Project Pulse</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="dashboard">
+      <header class="page-header">
+        <p class="eyebrow">Workspace overview</p>
+        <h1>Project Pulse</h1>
+        <p class="intro">A clear view of what your team is moving forward, and what needs a little attention.</p>
+      </header>
+
+      <main>
+        <section class="summary" aria-label="Project summary">
+          <article class="summary-tile">
+            <p class="summary-label">Projects</p>
+            <p class="summary-value" id="total-count">—</p>
+          </article>
+          <article class="summary-tile">
+            <p class="summary-label">On track</p>
+            <p class="summary-value" id="on-track-count">—</p>
+          </article>
+          <article class="summary-tile">
+            <p class="summary-label">High priority</p>
+            <p class="summary-value" id="high-priority-count">—</p>
+          </article>
+        </section>
+
+        <section class="projects-section" aria-labelledby="projects-heading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Your portfolio</p>
+              <h2 id="projects-heading">Projects</h2>
+            </div>
+            <p class="section-note" id="project-count"></p>
+          </div>
+          <p class="live-message" id="load-status" role="status" aria-live="polite">Loading projects…</p>
+          <div class="notice notice-empty" id="empty-state" hidden>
+            <h3>No projects yet</h3>
+            <p>Your projects will appear here as soon as they’re added.</p>
+          </div>
+          <div class="notice notice-error" id="error-state" hidden>
+            <h3>Projects couldn’t be loaded</h3>
+            <p id="error-message">Check your connection and try again.</p>
+            <button type="button" id="retry-button">Try again</button>
+          </div>
+          <ul class="project-grid" id="project-list" aria-label="Projects" hidden></ul>
+        </section>
+      </main>
+      <footer class="page-footer">A little more clarity for the work ahead.</footer>
+    </div>
+
+    <script>
+      const projectList = document.querySelector("#project-list");
+      const loadStatus = document.querySelector("#load-status");
+      const emptyState = document.querySelector("#empty-state");
+      const errorState = document.querySelector("#error-state");
+      const errorMessage = document.querySelector("#error-message");
+      const retryButton = document.querySelector("#retry-button");
+
+      const requiredFields = ["name", "owner", "status", "recentActivity", "priority"];
+
+      function makeTextElement(tag, className, text) {
+        const element = document.createElement(tag);
+        element.className = className;
+        element.textContent = text;
+        return element;
+      }
+
+      function makeProjectCard(project) {
+        const item = document.createElement("li");
+        item.className = "project-card";
+
+        const top = document.createElement("div");
+        top.className = "card-top";
+        const title = makeTextElement("h3", "project-name", project.name);
+        const status = makeTextElement("span", "status-badge", project.status);
+        const statusKey = project.status.trim().toLowerCase();
+        if (statusKey === "on track") status.classList.add("status-on-track");
+        else if (statusKey === "in progress") status.classList.add("status-in-progress");
+        else if (statusKey === "needs attention") status.classList.add("status-needs-attention");
+        else if (statusKey === "complete" || statusKey === "completed") status.classList.add("status-complete");
+        top.append(title, status);
+
+        const owner = document.createElement("p");
+        owner.className = "project-owner";
+        owner.append(makeTextElement("span", "detail-label", "Owner"), document.createTextNode(project.owner));
+
+        const activity = document.createElement("p");
+        activity.className = "project-activity";
+        activity.append(makeTextElement("span", "detail-label", "Recent activity"), document.createTextNode(project.recentActivity));
+
+        const footer = document.createElement("div");
+        footer.className = "card-footer";
+        const priority = makeTextElement("span", "priority-value", project.priority);
+        const priorityKey = project.priority.trim().toLowerCase();
+        if (["high", "medium", "low"].includes(priorityKey)) {
+          priority.classList.add(`priority-${priorityKey}`);
+        } else {
+          priority.classList.add("priority-neutral");
+        }
+        footer.append(makeTextElement("span", "detail-label", "Priority"), priority);
+        item.append(top, owner, activity, footer);
+        return item;
+      }
+
+      function updateSummary(projects) {
+        document.querySelector("#total-count").textContent = projects.length;
+        document.querySelector("#on-track-count").textContent = projects.filter(
+          (project) => project.status.trim().toLowerCase() === "on track"
+        ).length;
+        document.querySelector("#high-priority-count").textContent = projects.filter(
+          (project) => project.priority.trim().toLowerCase() === "high"
+        ).length;
+        document.querySelector("#project-count").textContent =
+          `${projects.length} ${projects.length === 1 ? "project" : "projects"}`;
+      }
+
+      async function loadProjects() {
+        loadStatus.textContent = "Loading projects…";
+        loadStatus.hidden = false;
+        projectList.hidden = true;
+        projectList.replaceChildren();
+        emptyState.hidden = true;
+        errorState.hidden = true;
+        retryButton.disabled = true;
+
+        try {
+          const response = await fetch("./project-data.json", { cache: "no-store" });
+          if (!response.ok) throw new Error(`The server responded with ${response.status}.`);
+          const data = await response.json();
+          if (!data || !Array.isArray(data.projects)) {
+            throw new Error("The project data needs a projects array.");
+          }
+          if (data.projects.some((project) =>
+            !project || requiredFields.some((field) =>
+              typeof project[field] !== "string" || !project[field].trim()
+            )
+          )) {
+            throw new Error("One or more projects are missing required details.");
+          }
+
+          updateSummary(data.projects);
+          if (data.projects.length === 0) {
+            emptyState.hidden = false;
+            loadStatus.textContent = "No projects to display.";
+          } else {
+            projectList.append(...data.projects.map(makeProjectCard));
+            projectList.hidden = false;
+            loadStatus.textContent = `${data.projects.length} projects loaded.`;
+          }
+        } catch (error) {
+          errorMessage.textContent = `${error.message || "An unexpected error occurred."} Check the project data and try again.`;
+          errorState.hidden = false;
+          loadStatus.textContent = "Project loading failed.";
+        } finally {
+          retryButton.disabled = false;
+        }
+      }
+
+      retryButton.addEventListener("click", loadProjects);
+      loadProjects();
+    </script>
+  </body>
+</html>

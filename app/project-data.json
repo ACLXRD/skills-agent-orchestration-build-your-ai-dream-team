@@ -1,0 +1,32 @@
+{
+  "projects": [
+    {
+      "name": "Northstar Analytics",
+      "owner": "Maya Chen",
+      "status": "On track",
+      "recentActivity": "Insights dashboard shared with the research team · 2 hours ago",
+      "priority": "High"
+    },
+    {
+      "name": "Atlas Mobile",
+      "owner": "Jordan Lee",
+      "status": "In progress",
+      "recentActivity": "Finished the new account setup flow · Yesterday",
+      "priority": "Medium"
+    },
+    {
+      "name": "Fieldnotes",
+      "owner": "Sam Rivera",
+      "status": "Needs attention",
+      "recentActivity": "Waiting on final copy for the launch page · Yesterday",
+      "priority": "High"
+    },
+    {
+      "name": "Evergreen Design System",
+      "owner": "Avery Patel",
+      "status": "On track",
+      "recentActivity": "Button and form patterns are ready for review · 2 days ago",
+      "priority": "Low"
+    }
+  ]
+}
